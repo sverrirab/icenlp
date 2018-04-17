@@ -1,16 +1,17 @@
 <?xml version="1.0"?>
 
-<project name="IceNLPCore" default="package" basedir=".">
+<project name="IceNLPCore" default="release-jar" basedir=".">
 	<description>
 		Compiles a release version of the IceNLP toolkit as a single jar file with resource files
 	</description>
 
 	<property name="src" location="src" />
+	<property name="src-core" location="src/is/iclt/icenlp/core"/>
 	<property name="build" location="build" />
 	<property name="dist" location="dist" />
-	<property name="package" value="IceNLPCore" />
+	<property name="zipname" value="IceNLP" />
 	<property name="lib" location="lib" />
-	<property name="javadoc" location="javadoc" />	
+	<property name="javadoc" location="javadoc" />
 	
 	<property name="dict" location="dict" />	
 	<property name="segment" location="${lib}/segment-1.3.3.jar" />
@@ -20,7 +21,7 @@
 	<property name="xerces" location="${lib}/xerces.jar" />
 	<property name="junit" location="${lib}/junit-4.8.2.jar" />
 
-    	<property name="version" value="11.03" />
+	<property name="version" value="1.4.1" />
 	<property name="jar_name" value="IceNLPCore" />
 
 	<path id="classpath">
@@ -43,14 +44,14 @@
 	</path>
 
 	<target name="makerules"
-					depends="flex-icetagger, flex-iceparser, flex-iceparser-errorsearch, flex-iceNER"
+					depends="flex-icetagger, flex-icestagger, flex-iceparser, flex-iceparser-errorsearch, flex-iceNER"
 					description="Runs the make rules file"/>
 	<target name="flex-icetagger-check">
 		<condition property="flex-icetagger.is-uptodate">
 			<uptodate>
 				<srcfiles dir="." includes="flex/icetagger/genIceRules.flex"/>
 				<mapper type="merge"
-					to="src/is/iclt/icenlp/core/icetagger/IceLocalRules.java"/>
+					to="${src-core}/icetagger/IceLocalRules.java"/>
 			</uptodate>
 		</condition>
 	</target>
@@ -60,13 +61,29 @@
 		</exec>
 		<echo message="IceTagger rules file created." level="info" />
 	</target>
+	<target name="flex-icestagger-check">
+		<condition property="flex-icestagger.is-uptodate">
+			<uptodate>
+				<srcfiles dir="." includes="flex/icestagger/*.flex"/>
+				<mapper type="glob"
+						from="flex/icestagger/*.flex"
+						to="${src-core}/icestagger/*.java"/>
+			</uptodate>
+		</condition>
+	</target>
+	<target name="flex-icestagger" depends="flex-icestagger-check" unless="flex-icestagger.is-uptodate">
+		<exec executable="bash" newenvironment="false" dir="flex/icestagger">
+			<arg value="flexAll.sh" />
+		</exec>
+		<echo message="IceStagger tokenizer files created." level="info" />
+	</target>
 	<target name="flex-iceparser-check">
 		<condition property="flex-iceparser.is-uptodate">
 			<uptodate>
 				<srcfiles dir="." includes="flex/iceparser/*.flex"/>
 				<mapper type="glob"
           from="flex/iceparser/*.flex"
-					to="src/is/iclt/icenlp/core/iceparser/*.java"/>
+					to="${src-core}/iceparser/*.java"/>
 			</uptodate>
 		</condition>
 	</target>
@@ -82,7 +99,7 @@
 				<srcfiles dir="." includes="flex/iceparser/errorSearch/*.flex"/>
 				<mapper type="glob"
           from="flex/iceparser/errorSearch/*.flex"
-					to="src/is/iclt/icenlp/core/iceparser/*.java"/>
+					to="${src-core}/iceparser/*.java"/>
 			</uptodate>
 		</condition>
 	</target>
@@ -97,7 +114,7 @@
 			<uptodate>
 				<srcfiles dir="." includes="flex/iceNER/NameScanner.flex"/>
 				<mapper type="merge"
-					to="src/is/iclt/icenlp/core/iceNER/NameScanner.java"/>
+					to="${src-core}/iceNER/NameScanner.java"/>
 			</uptodate>
 		</condition>
 	</target>
@@ -125,7 +142,7 @@
 	</target>
 
 	<target name="junit" depends="compile" unless="release-jar.is-uptodate" description="Runs the JUnit tests">
-		<junit fork="no" haltonfailure="yes">
+		<junit fork="true" haltonfailure="yes">
 			<classpath refid="classpath.test" />
 			<formatter type="brief" usefile="false" />
 
@@ -160,7 +177,7 @@
             <fileset dir="./">
 		<include name="dict/icetagger/*.dict" />
 		<!-- The following line is needed for not copying  otbBin.dict into the jar file-->
-                <!--exclude name="dict/icetagger/otbBin*.dict" /-->
+				<exclude name="dict/icetagger/otbBin*.dict"/>
 		<include name="dict/tokenizer/*" />
                 <include name="dict/tritagger/*.dict" />
             	<include name="dict/formald/segment.srx" />
@@ -171,6 +188,7 @@
             	<include name="dict/lemmald/settings.txt" />   
 		<!-- HMM /--> 
                 <include name="ngrams/models/otb.*" />
+				<exclude name="ngrams/models/otbBin.*"/>
 		        <include name="lists/*" />
             </fileset>
 	        <manifest>
@@ -194,49 +212,29 @@
 		</exec>
 	</target>
 
-	<target name="package" depends="release-jar, docs" >
-		<mkdir dir="${dist}/${package}" />
-		<copy file="${dist}/${jar_name}.jar" todir="${dist}/${package}/dist" />
-		<copy todir="${dist}/${package}/bat">
-			<fileset dir="bat" />
-		</copy>		
-	    <chmod perm="+x" dir="${dist}/${package}/bat" includes="**/*.sh" />		 
-		
-		<copy todir="${dist}/${package}/dict">
-			<fileset dir="dict"> 
+
+	<target name="zip" depends="release-jar, docs" >
+		<zip compress="yes" destfile="${dist}/${zipname}-${version}.zip">
+			<zipfileset dir="dist" includes="IceNLPCore.jar" prefix="${zipname}/dist" />
+			<zipfileset dir="bat" 	prefix="${zipname}/bat">
+				<exclude name="**/icestagger/corpora/bin.lexicon"/>
+				<exclude name="**/icestagger/corpora/otb.plain"/>
+				<exclude name="**/icestagger/models/otbBIN.bin"/>
+			</zipfileset>
+			<zipfileset dir="bat" includes="**/*.sh" filemode="755" prefix="${zipname}/bat" />
+			<zipfileset dir="dict" prefix="${zipname}/dict" >
 				<exclude name="**/otbBin*.dict"/>
-			</fileset>
-		</copy>
-		<copy todir="${dist}/${package}/lib">
-			<fileset dir="lib" />
-		</copy>		
-		<copy todir="${dist}/${package}/ngrams">
-			<fileset dir="ngrams">
-				<exclude name="**/models/otbBin*.lex"/>
-			</fileset>
-		</copy>
-		<copy todir="${dist}/${package}/lists">
-			<fileset dir="lists" />
-		</copy>
-
-
-		<copy file="doc/IceNLP.pdf" todir="${dist}/${package}/doc" />
-		<copy file="doc/Tagset.pdf" todir="${dist}/${package}/doc" />		
-	</target>
-
-	<target name="zip" depends="package" >
-		<zip compress="yes" destfile="${dist}/${package}-${version}.zip">
-			<zipfileset dir="dist" includes="IceNLPCore.jar" prefix="${package}/dist" />
-            		<zipfileset dir="bat" includes="**/*.sh" filemode="755" prefix="${package}/bat" />
-			<zipfileset dir="bat" includes="**/*" excludes="**/*.sh" prefix="${package}/bat" />
-			
-		    	<zipfileset dir="dict" prefix="${package}/dict" />
-			<zipfileset dir="lib" prefix="${package}/lib" />
-			<zipfileset dir="ngrams" prefix="${package}/ngrams" />
-			<zipfileset dir="doc" includes="**/*.pdf" prefix="${package}/doc" />
+				<exclude name="**/BIN/bin*.dict"/>
+				<exclude name="**/BIN/bin*.out"/>
+				<exclude name="**/BIN/SHsnid.csv"/>
+			</zipfileset>
+			<zipfileset dir="lib" prefix="${zipname}/lib" />
+			<zipfileset dir="ngrams" prefix="${zipname}/ngrams">
+				<exclude name="**/models/otbBin*.*"/>
+			</zipfileset>
+			<zipfileset dir="doc" includes="**/*.pdf" prefix="${zipname}/doc" />
 		</zip>
 	</target>
-	
 
 	<target name="clean" description="clean up" >
         	<!-- Delete the ${build} and ${dist} directory trees -->
@@ -245,41 +243,43 @@
 		<!-- Delete the generated rules files -->
 		<delete file="flex/icetagger/genIceRules.class"/>
 		<delete file="flex/icetagger/genIceRules.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/icetagger/IceLocalRules.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Case_AP.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Case_NP.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Clean1.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Clean2.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Correction.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/ErrDetect.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Func_COMP.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Func_OBJ.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Func_OBJ2.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Func_OBJ3.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Func_QUAL.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Func_SUBJ.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Func_SUBJ2.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Func_TIMEX.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_AP.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_APs.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_AdvP.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_FOREIGN.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_MWE.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_MWEP1.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_MWEP2.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_NP.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_NP2.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_NPs.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_PP.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_Per_Line.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Phrase_VP.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/Preprocess.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/TagDecoder.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/TagEncoder.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/NP_errors.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/PP_errors.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceparser/VP_errors.java"/>
-		<delete file="${src}/is/iclt/icenlp/core/iceNER/NameScanner.java"/>
+		<delete file="${src-core}/icetagger/IceLocalRules.java"/>
+		<delete file="${src-core}/icestagger/EnglishTokenizer.java"/>
+		<delete file="${src-core}/icestagger/LatinTokenizer.java"/>
+		<delete file="${src-core}/iceparser/Case_AP.java"/>
+		<delete file="${src-core}/iceparser/Case_NP.java"/>
+		<delete file="${src-core}/iceparser/Clean1.java"/>
+		<delete file="${src-core}/iceparser/Clean2.java"/>
+		<delete file="${src-core}/iceparser/Correction.java"/>
+		<delete file="${src-core}/iceparser/ErrDetect.java"/>
+		<delete file="${src-core}/iceparser/Func_COMP.java"/>
+		<delete file="${src-core}/iceparser/Func_OBJ.java"/>
+		<delete file="${src-core}/iceparser/Func_OBJ2.java"/>
+		<delete file="${src-core}/iceparser/Func_OBJ3.java"/>
+		<delete file="${src-core}/iceparser/Func_QUAL.java"/>
+		<delete file="${src-core}/iceparser/Func_SUBJ.java"/>
+		<delete file="${src-core}/iceparser/Func_SUBJ2.java"/>
+		<delete file="${src-core}/iceparser/Func_TIMEX.java"/>
+		<delete file="${src-core}/iceparser/Phrase_AP.java"/>
+		<delete file="${src-core}/iceparser/Phrase_APs.java"/>
+		<delete file="${src-core}/iceparser/Phrase_AdvP.java"/>
+		<delete file="${src-core}/iceparser/Phrase_FOREIGN.java"/>
+		<delete file="${src-core}/iceparser/Phrase_MWE.java"/>
+		<delete file="${src-core}/iceparser/Phrase_MWEP1.java"/>
+		<delete file="${src-core}/iceparser/Phrase_MWEP2.java"/>
+		<delete file="${src-core}/iceparser/Phrase_NP.java"/>
+		<delete file="${src-core}/iceparser/Phrase_NP2.java"/>
+		<delete file="${src-core}/iceparser/Phrase_NPs.java"/>
+		<delete file="${src-core}/iceparser/Phrase_PP.java"/>
+		<delete file="${src-core}/iceparser/Phrase_Per_Line.java"/>
+		<delete file="${src-core}/iceparser/Phrase_VP.java"/>
+		<delete file="${src-core}/iceparser/Preprocess.java"/>
+		<delete file="${src-core}/iceparser/TagDecoder.java"/>
+		<delete file="${src-core}/iceparser/TagEncoder.java"/>
+		<delete file="${src-core}/iceparser/NP_errors.java"/>
+		<delete file="${src-core}/iceparser/PP_errors.java"/>
+		<delete file="${src-core}/iceparser/VP_errors.java"/>
+		<delete file="${src-core}/iceNER/NameScanner.java"/>
 		<delete file="dict/lemmald/rule_database_utf8.dat"/>
 		<delete file="doc/IceNLP.aux"/>
 		<delete file="doc/IceNLP.bbl"/>

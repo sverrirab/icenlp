@@ -1,10 +1,10 @@
 [Used by IceTagger]
 
 [The name of the input file to be tagged]
-INPUT_FILE=test.txt
+INPUT_FILE=mogginn.txt
 
 [The name of the output file]
-OUTPUT_FILE=test.out
+OUTPUT_FILE=mogginn.out
 
 [Input LINE_FORMAT = 1|2|3 ]
 [ 1: one token per line. One empty line between sentences ]
@@ -60,4 +60,4 @@ LEMMATIZE=no
 STRICT=yes
 
 [External Analysis icenlp|apertium]
-EXTERNAL_ANALYSIS=apertium
+EXTERNAL_ANALYSIS=icenlp
