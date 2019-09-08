@@ -2,12 +2,13 @@ FROM debian:8
 
 MAINTAINER Sverrir A. Berg <sab@keilir.com>
 
-RUN apt-get update
-RUN apt-get install -y openjdk-7-jdk
-RUN apt-get install -y jflex
-RUN apt-get install -y ant
-RUN apt-get install -y texlive-latex-extra
-RUN apt-get install -y texlive-fonts-recommended
+RUN apt-get update &&  apt-get install -y --no-install-recommends \
+    jflex                       \
+    ant                         \
+    ant-optional                \
+    openjdk-7-jdk               \
+    texlive-latex-extra         \
+    texlive-fonts-recommended
 
 ENV JAVA_TOOL_OPTIONS "-Dfile.encoding=UTF8"
 
@@ -27,5 +28,4 @@ RUN ant
 
 EXPOSE 1234
 
-CMD ["/icenlp/server/sh/RunServer.sh"]
-
+CMD ["/icenlp/server/sh/RunServerInDocker.sh"]
