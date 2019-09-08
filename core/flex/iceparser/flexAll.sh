@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+set -e
+
 ./flexit.sh Preprocess
 ./flexit.sh Phrase_MWEP1
 ./flexit.sh Phrase_MWEP2
